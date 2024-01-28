@@ -1,47 +1,60 @@
 import pyomo.environ as pyo
 
-def build_model():
-    m = pyo.ConcreteModel()
+# Create a concrete model
+model = pyo.ConcreteModel()
 
-    # Initialize Sets directly in the model
-    m.nodes = pyo.Set(initialize={'s1', 's2', 's3', 't1', 't2', 't3', 'x', 'y'})
-    m.edges = pyo.Set(dimen=2, initialize={('s1', 't1'), ('s1','x'), ('s2', 'x'), ('s3','x'), ('s3', 't3'), ('x', 'y'), ('y', 't1'), ('y', 't2'), ('y', 't3')})
-    m.commodities = pyo.Set(initialize={'d1', 'd2', 'd3'})
+# Sets for nodes, edges, and commodities
+nodes = {'s1', 's2', 's3', 't1', 't2', 't3', 'x', 'y'}
+edges = {('s1', 'x'), ('s1', 't1'), ('s2', 'x'), ('s3', 'x'), ('s3', 't3'), ('x', 'y'), ('y', 't1'), ('y', 't2'), ('y', 't3')}
+commodities = {'d1', 'd2', 'd3'}
 
-    # Initialize Parameters directly in the model
-    m.demand = pyo.Param(m.commodities, initialize={'d1':9, 'd2':2, 'd3':3})
-    m.capacity = pyo.Param(m.edges, initialize={('s1', 't1'):7, ('s1','x'):5, ('s2', 'x'):3, ('s3','x'):5, ('s3', 't3'):5, ('x', 'y'):14, ('y', 't1'):3, ('y', 't2'):3, ('y', 't3'):4})
-    m.cost = pyo.Param(m.edges, m.commodities, initialize={('s1', 't1'):3, ('s1','x'):1, ('s2', 'x'):2, ('s3','x'):2, ('s3', 't3'):5, ('x', 'y'):2, ('y', 't1'):1, ('y', 't2'):2, ('y', 't3'):2})
+# Parameters: capacities, costs, demands, and supply
+capacities = {('s1', 'x'):5, ('s1', 't1'):7, ('s2', 'x'):3, ('s3', 'x'):5, ('s3', 't3'):5, ('x', 'y'):14, ('y', 't1'):3, ('y', 't2'):3, ('y', 't3'):4}
+costs = {('s1', 'x'):1, ('s1', 't1'):3, ('s2', 'x'):2, ('s3', 'x'):2, ('s3', 't3'):5, ('x', 'y'):2, ('y', 't1'):1, ('y', 't2'):2, ('y', 't3'):2}
+demands = {'d1': 9, 'd2': 2, 'd3': 3}
 
-    # Variables: the flow of commodity k through edge e
-    m.flow = pyo.Var(m.edges, m.commodities, domain=pyo.NonNegativeReals)
+# Variables
+model.flow = pyo.Var(commodities, edges, within=pyo.NonNegativeReals)
 
-    # Objective: minimize the cost
-    def objective_rule(m):
-        return sum(m.flow[e,c]* m.cost[e,c] for e in m.edges for c in m.commodities)
-    m.objective = pyo.Objective(rule=objective_rule, sense=pyo.minimize)
+# Objective function
+def objective_rule(model):
+    return sum(costs[e] * model.flow[k, e] for k in commodities for e in edges)
 
-    # Capacity Constraints: should only be defined for each edge
-    def capacity_rule(m, e):
-        return sum(m.flow[e, c] for c in m.commodities) <= m.capacity[e]
-    m.capacity_constraints = pyo.Constraint(m.edges, rule=capacity_rule)
+model.objective = pyo.Objective(rule=objective_rule, sense=pyo.minimize)
 
-    # Flow Conservation Constraints: a single rule for all nodes
-    def flow_rule(m, n, c):
-        inflow = sum(m.flow[(i,n), c] for i in m.nodes if (i,n) in m.edges)
-        outflow = sum(m.flow[(n,j), c] for j in m.nodes if (n,j) in m.edges)
-        if n[0] == 's':  # source nodes
-            return (outflow - inflow) == m.demand[c]
-        elif n[0] == 't':  # sink nodes
-            return (inflow - outflow) == m.demand[c]
-        else:  # intermediate nodes
-            return inflow == outflow
-    m.flow_conservation = pyo.Constraint(m.nodes, m.commodities, rule=flow_rule)
+# Constraints
+# Capacity constraints
+def capacity_rule(model, i, j):
+    return sum(model.flow[k, (i, j)] for k in commodities) <= capacities[(i, j)]
 
-    return m
+model.capacity_constraints = pyo.Constraint(edges, rule=capacity_rule)
 
-if __name__ == "__main__":
-    model = build_model()
-    solver = pyo.SolverFactory('gurobi')
-    solver.solve(model)
-    model.display()
+# Flow conservation constraints
+# Map commodities to their source and sink nodes
+source = {'d1': 's1', 'd2': 's2', 'd3': 's3'}
+sink = {'d1': 't1', 'd2': 't2', 'd3': 't3'}
+
+def flow_conservation_rule(model, n, k):
+    if n == source[k]:  # Source node for commodity k
+        return sum(model.flow[k, (i, j)] for i, j in edges if i == n) == demands[k]
+    elif n == sink[k]:  # Sink node for commodity k
+        return sum(model.flow[k, (i, j)] for i, j in edges if j == n) - sum(model.flow[k, (i, j)] for i, j in edges if i == n) == -demands[k]
+    else:  # Intermediate nodes
+        return sum(model.flow[k, (i, j)] for i, j in edges if j == n) - sum(model.flow[k, (i, j)] for i, j in edges if i == n) == 0
+
+model.flow_conservation = pyo.Constraint(nodes, commodities, rule=flow_conservation_rule)
+
+# Solve
+solver = pyo.SolverFactory('gurobi')  
+solution = solver.solve(model, tee=True)
+
+# Check if the solution is feasible
+if (solution.solver.status == pyo.SolverStatus.ok) and (solution.solver.termination_condition == pyo.TerminationCondition.optimal):
+    # Print the results
+    for k in commodities:
+        for e in edges:
+            print(f"Flow of commodity {k} through edge {e}: {model.flow[k, e].value}")
+else:
+    print("No feasible solution found")
+
+
