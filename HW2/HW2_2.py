@@ -1,46 +1,46 @@
-# # This is the the pyomo model solved with IPOPT to verify whether the solution is optimal.
-# # You can uncomment the following code to run it.
-# import pyomo.environ as pyo
-# from pyomo.opt import SolverFactory
+# This is the the pyomo model solved with IPOPT to verify whether the solution is optimal.
+# You can uncomment the following code to run it.
+import pyomo.environ as pyo
+from pyomo.opt import SolverFactory
 
-# # Define the function f
-# def f(model):
-#     x1 = model.x1
-#     x2 = model.x2
-#     x3 = model.x3
-#     return x3 * pyo.log(pyo.exp(x1/x3) + pyo.exp(x2/x3)) + (x3 - 2)**2 + pyo.exp(1/(x1 + x2))
+# Define the function f
+def f(model):
+    x1 = model.x1
+    x2 = model.x2
+    x3 = model.x3
+    return x3 * pyo.log(pyo.exp(x1/x3) + pyo.exp(x2/x3)) + (x3 - 2)**2 + pyo.exp(1/(x1 + x2))
 
-# # Create a model instance
-# model = pyo.ConcreteModel()
+# Create a model instance
+model = pyo.ConcreteModel()
 
-# # Define variables
-# model.x1 = pyo.Var(initialize=1, within=pyo.Reals)
-# model.x2 = pyo.Var(initialize=1, within=pyo.Reals)
-# model.x3 = pyo.Var(initialize=1, within=pyo.PositiveReals)
+# Define variables
+model.x1 = pyo.Var(initialize=1, within=pyo.Reals)
+model.x2 = pyo.Var(initialize=1, within=pyo.Reals)
+model.x3 = pyo.Var(initialize=1, within=pyo.PositiveReals)
 
-# # Add objective
-# model.objective = pyo.Objective(rule=f, sense=pyo.minimize)
+# Add objective
+model.objective = pyo.Objective(rule=f, sense=pyo.minimize)
 
-# # Add constraints
-# model.constraint1 = pyo.Constraint(expr=model.x1 + model.x2 >= 0)
-# model.constraint2 = pyo.Constraint(expr=model.x3 >= 0)
+# Add constraints
+model.constraint1 = pyo.Constraint(expr=model.x1 + model.x2 >= 0)
+model.constraint2 = pyo.Constraint(expr=model.x3 >= 0)
 
-# # Specify the IPOPT solver
-# opt = SolverFactory('ipopt')
+# Specify the IPOPT solver
+opt = SolverFactory('ipopt')
 
-# # Solve the model
-# results = opt.solve(model, tee=True)
+# Solve the model
+results = opt.solve(model, tee=True)
 
-# # Get the results
-# x1_opt = pyo.value(model.x1)
-# x2_opt = pyo.value(model.x2)
-# x3_opt = pyo.value(model.x3)
-# min_f = pyo.value(model.objective)
+# Get the results
+x1_opt = pyo.value(model.x1)
+x2_opt = pyo.value(model.x2)
+x3_opt = pyo.value(model.x3)
+min_f = pyo.value(model.objective)
 
-# print('x1 =', x1_opt)
-# print('x2 =', x2_opt)
-# print('x3 =', x3_opt)
-# print('min_f =', min_f)
+print('x1 =', x1_opt)
+print('x2 =', x2_opt)
+print('x3 =', x3_opt)
+print('min_f =', min_f)
 
 # Problem 2 Quasi-Newton method (BFGS method)
 # You can uncomment the following code to run it.
