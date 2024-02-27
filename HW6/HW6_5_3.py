@@ -103,8 +103,11 @@ model.display()
 print(results)
 
 # Display the flow on each edge
+# for edge in edges:
+#     print(f"Flow on edge {edge}: {model.Flow[edge].value:.2f}")
+
 for edge in edges:
-    print(f"Flow on edge {edge}: {model.Flow[edge].value:.2f}")
+    print(f"Flow on edge {edge}: {model.Flow[edge].value}")
 
 # Display the total cost
-print(f"Total cost: {model.Objective():,.2f}")
+print(f"Total cost: {model.Objective()}")
