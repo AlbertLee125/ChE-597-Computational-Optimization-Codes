@@ -7,11 +7,11 @@ def primal_dual_interior_point_v2(x0, u0, mu=1.2, epsilon=1e-5, alpha=0.5, beta=
 
     def gradient_objective(x):
         x1, x2 = x
-        return np.array([-3 / (x1 + x2)**2 + np.exp(x1) + 2 * (x1 - x2), 3 / (x1 + x2)**2 + 1 - 2 * (x1 - x2)])
+        return np.array([-3 / ((x1 + x2)**2)+ np.exp(x1) + 2 * (x1 - x2), -3 / ((x1 + x2)**2) - 2 * (x1 - x2)])
 
     def hessian_objective(x):
         x1, x2 = x
-        return np.array([[6 / (x1 + x2)**3 + np.exp(x1) + 2, -6 / (x1 + x2)**3 - 2], [-6 / (x1 + x2)**3 - 2, 6 / (x1 + x2)**3 + 2]])
+        return np.array([[6 / (x1 + x2)**3 + np.exp(x1) + 2, -6 / (x1 + x2)**3 - 2], [6 / (x1 + x2)**3 - 2, 6 / (x1 + x2)**3 + 2]])
 
     def constraints(x):
         return np.array([
@@ -52,7 +52,7 @@ def primal_dual_interior_point_v2(x0, u0, mu=1.2, epsilon=1e-5, alpha=0.5, beta=
             new_u = u_current + step_size * delta[2:]
             new_primal_residual = constraints(new_x)
             new_dual_residual = gradient_objective(new_x) + np.dot(jacobian_constraints(new_x).T, new_u)
-            if np.all(new_primal_residual >= 0) and np.linalg.norm(new_primal_residual) < np.linalg.norm(primal_residual) and np.linalg.norm(new_dual_residual) < np.linalg.norm(dual_residual):
+            if np.all(new_primal_residual >= 0) and np.linalg.norm(new_primal_residual) < np.linalg.norm(new_primal_residual) and np.linalg.norm(new_dual_residual) < np.linalg.norm(new_dual_residual):
                 break
             step_size *= beta
 
