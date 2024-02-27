@@ -92,7 +92,7 @@ def capacity_constraints(model, i, j):
 
 model.CapacityConstraints = pyo.Constraint(model.Edges, rule=capacity_constraints)
 
-# Solve using Gurobi with the primal simplex algorithm
+# Solve using Gurobi with the barrier's algorithm
 solver = pyo.SolverFactory('gurobi')
 solver.options['Method'] = 2  # For barrier's algorithm
 solver.options['Crossover'] = 0  # Disable crossover
