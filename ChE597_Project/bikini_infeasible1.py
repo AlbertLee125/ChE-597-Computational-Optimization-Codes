@@ -60,13 +60,3 @@ def end_cycle_inventory(model):
     return model.inventory[model.T.last()] >= model.initial_inventory
 model.end_cycle_con = pyo.Constraint(rule=end_cycle_inventory, doc='End cycle inventory constraint')
 
-# Solve the model
-solver = pyo.SolverFactory('gurobi')
-solver.solve(model, tee=True)
-
-# Print the results
-print("Total Holding Cost: $", pyo.value(model.cost))
-print("Optimal Production Plan:")
-print(f"Initial Inventory: {pyo.value(model.initial_inventory)} dozens")
-for t in model.T:
-    print(f"Quarter {t}: Production = {pyo.value(model.production[t])} dozens, Inventory = {pyo.value(model.inventory[t])} dozens")
