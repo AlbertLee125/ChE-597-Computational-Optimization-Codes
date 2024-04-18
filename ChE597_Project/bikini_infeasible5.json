@@ -1,0 +1,14 @@
+[
+    {
+        "question": "Troubleshoot the infeasibility",
+        "answer": "",
+        "time(sec)": "0.65",
+        "code": ""
+    },
+    {
+        "question": "Suppose I have some flexibility for the fixed cost at plant. Will my model become feasible if I can make some small changes to the demand?",
+        "answer": "",
+        "time(sec)": "0.65",
+        "code": ""
+    }
+]
