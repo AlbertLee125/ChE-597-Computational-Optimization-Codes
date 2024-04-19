@@ -1,14 +1,14 @@
 [
     {
-        "question": "Troubleshoot the infeasibility",
-        "answer": "",
-        "time(sec)": "0.65",
-        "code": ""
+        "question": "Troubleshoot the infeasibility. One of Bikini Company made a pre-order resulting in the minus inventory.",
+        "answer": "Analyzing this IIS output, we can see that the infeasibility is due to the constraint 'inventory_balance'. The constraint appears to be associated with processing how inventory shortages from pre-orders are handled.",
+        "time(sec)": "0.15",
+        "code": "# Create the solver and perform IIS analysis\nimport pyomo.environ as pyo\nsolver = pyo.SolverFactory('gurobi_direct')\nmodel = your_model_setup_function() # Ensure your model is set up here\nresult = solver.solve(model, tee=True)\nif result.solver.termination_condition == pyo.TerminationCondition.infeasible:\n    print(\"Model is infeasible, starting IIS analysis...\")\n    model.write(\"/tmp/model.lp\", io_options={'symbolic_solver_labels': True}) # Write the model to an LP file for IIS analysis\n    solver._solver_model.computeIIS() # Directly compute the IIS using Gurobi\n    solver._solver_model.write(\"/tmp/model.ilp\") # Write the IIS to a file\n    with open(\"/tmp/model.ilp\", 'r') as f: # Read and print the IIS\n        ilp_contents = f.read()\n        print(\"IIS output:\", ilp_contents)\nelse:\n    print(\"Model solved successfully:\", result.solver.status)"
     },
     {
-        "question": "Suppose I have some flexibility for the fixed cost at plant. Will my model become feasible if I can make some small changes to the demand?",
-        "answer": "",
-        "time(sec)": "0.65",
-        "code": ""
+        "question": "Suppose I have some flexibility for the production capacity. Will my model become feasible if I can make some small changes to the production? Use the Slack variables and then analyze it.",
+        "answer": "The use of slack variables enabled the model to handle demands beyond production capacities, ensuring feasibility but increasing costs, particularly in the first quarter where 2100 dozens of slack were used. This suggests a need to reevaluate and optimize production capacities to reduce reliance on costly slack and improve sustainability.",
+        "time(sec)": "0.25",
+        "code": "# Adding slack variables for each quarter to handle possible demand overflows\nmodel.slack = pyo.Var(model.T, within=pyo.NonNegativeReals, initialize=0, doc=\"Slack variables to manage excess demand\")\n\n# Update the inventory balance constraint to include slack variables\ndef updated_inventory_balance(model, t):\n    if t == 1:\n        return model.initial_inventory + model.production[t] - model.demand[t] + model.slack[t] == model.inventory[t]\n    else:\n        return model.inventory[t-1] + model.production[t] - model.demand[t] + model.slack[t] == model.inventory[t]\n\n# Deactivate the old inventory balance constraint and activate the new one\nmodel.inv_bal.deactivate()\nmodel.updated_inv_bal = pyo.Constraint(model.T, rule=updated_inventory_balance, doc=\"Updated inventory balance including slack variables\")\n\n# Update the objective function to penalize slack variable usage to keep the solution practical\nmodel.updated_cost = pyo.Objective(expr=model.holding_cost_initial * model.initial_inventory +\n                                   sum(model.holding_cost[t] * model.inventory[t] + 10 * model.slack[t] for t in model.T),\n                                   sense=pyo.minimize, doc=\"Minimized holding costs including penalties for using slack\")\n\n# Deactivate the old cost objective and activate the new one\nmodel.cost.deactivate()\nmodel.updated_cost.activate()\n\n# Resolve the model with the new settings\nsolver = pyo.SolverFactory('gurobi')\nsolution = solver.solve(model, tee=True)\n\n# Output the updated results with slack usage\nprint(\"Revised Model Status after adding slack variables:\", solution.solver.status)\nprint(\"Revised Total Holding Cost with slack variables: $\", pyo.value(model.updated_cost))\nprint(\"Revised Optimal Production Plan with slack variables usage:\")\nfor t in model.T:\n    print(f\"Quarter {t}: Production = {pyo.value(model.production[t])} dozens, \" +\n          f\"Inventory = {pyo.value(model.inventory[t])} dozens, \" +\n          f\"Slack Used = {pyo.value(model.slack[t])} dozens\")"
     }
 ]
