@@ -1,0 +1,56 @@
+[
+    {
+        "question": "What if the demand in the first quarter significantly increased due to an unexpected market trend? The demand in the first quarter increases from 2800 dozen to 3500 dozen. How would an increase in first-quarter demand affect the production schedule and inventory levels throughout the year?",
+        "answer": "The optimization problem become infeasible. The first quarter demand grow higher than the production capacity. The production capacity is 1200 dozen. The demand is 3500 dozen. The production capacity is not enough to meet the demand. The production capacity should be increased to meet the demand",
+        "time(sec)": "0.16",
+        "code": "\n# Switch the first quarter demand to 3500\nmodel.demand[1] = 3500\n\n# Solve the model with updated demand\nsolver = pyo.SolverFactory('gurobi')\nresults = solver.solve(model, tee=True)\nprint(results)\n"
+    },
+    {
+        "question": "What if the holding costs were reduced in the last quarter due to cheaper storage options? The holding cost in the fourth quarter drops from $15 per dozen to $10 per dozen. What impact would the reduction in holding costs in the fourth quarter have on the total annual holding cost and end-of-year inventory levels?",
+        "answer": "Since the production rate and the inventory does not change, the total holding cost(objective function) will decrease.",
+        "time(sec)": "0.16",
+        "code": "\n# The holding cost in the 4th quarter decreased to 10\nmodel.holding_cost[4] = 10\n\n# Solve the model with updated holding costs\nsolver = pyo.SolverFactory('gurobi')\nresults = solver.solve(model, tee=True)\nprint(results)\nprint(\"Total Holding Cost: $\", pyo.value(model.cost))\n"
+    },
+    {
+        "question": "What if the production capacity in the second quarter could be dynamically increased? Production capacity in the second quarter is increased from 1200 dozens to 1500 dozens. How does increasing the production capacity in Q2 influence the inventory and production decisions in subsequent quarters?",
+        "answer": "The increase of the capacity did not affect the production and inventory levels.",
+        "time(sec)": "0.65",
+        "code": "\n# Production capacity for 2nd quarter increased to 1500\nmodel.capacity[2] = 1500\n\n# Solve the model with updated capacity\nsolver = pyo.SolverFactory('gurobi')\nsolver.solve(model, tee=True)\n\n# Print the updated results\nprint(\"Total Holding Cost: $\", pyo.value(model.cost))\nprint(\"Optimal Production Plan:\")\nprint(f\"Initial Inventory: {pyo.value(model.initial_inventory)} dozens\")\nfor t in model.T:\n    print(f\"Quarter {t}: Production = {pyo.value(model.production[t])} dozens, Inventory = {pyo.value(model.inventory[t])} dozens\")\n"
+    },
+    {
+        "question": "What if a new policy required that the inventory at the end of the year must be at least as much as the initial inventory? Implement a policy where the end cycle inventory must be equal to or greater than 200 dozens. How would enforcing a minimum end cycle inventory requirement affect overall production and inventory costs?",
+        "answer": "The end cycle inventory is set to be at least 200 dozens. The end cycle inventory decreased from 1600 dozens to 200 dozens and the end cycle inventory equal to initial inventory requirement is neutralized. Therefore, the production for second quarter decreased to 1200 dozens, third quarter decreased to 100 dozens, and fourth quarter decreased to 1050 dozens. The total holding cost decreased to $ 27000.",
+        "time(sec)": "0.15",
+        "code": "# Define the constraint for minimum end cycle inventory\n\ndef end_cycle_inventory_policy(model):\n    return model.inventory[model.T.last()] >= 200\nmodel.end_cycle_con = pyo.Constraint(rule=end_cycle_inventory_policy, doc='End cycle inventory must be at least 200 dozens')\n\n# Solve the model with the new end cycle inventory policy\nsolver = pyo.SolverFactory('gurobi')\nresult = solver.solve(model, tee=True)\nprint(result)\n\n# Print the results to see how the new policy affects production and inventory levels\nprint('Total Holding Cost: $', pyo.value(model.cost))\nprint('Optimal Production Plan:')\nprint(f'Initial Inventory: {pyo.value(model.initial_inventory)} dozens')\nfor t in model.T:\n    print(f'Quarter {t}: Production = {pyo.value(model.production[t])} dozens, Inventory = {pyo.value(model.inventory[t])} dozens')"
+    },
+    {
+        "question": "What if the initial inventory was assumed to be higher due to overproduction in the previous year? Initial inventory is set at 2000 dozens instead of starting from 1600 doznes. How would a higher starting inventory affect the production levels needed in each quarter to meet demand?",
+        "answer": "The initial inventory is set to 2000 dozens. The production for the first quarter decreased to 800 dozens. However, the initial inventory increased to 2000 dozens, resulting to increase of holding cost to $ 75000.",
+        "time(sec)": "0.17",
+        "code": "# Increase initial inventory due to overproduction in the previous year\nmodel.initial_inventory.fix(2000)\n\ndef end_cycle_inventory(model):\n    return model.inventory[model.T.last()] >= 1600\nmodel.end_cycle_con = pyo.Constraint(rule=end_cycle_inventory, doc='End cycle inventory constraint')\n\n# Solve the model with updated initial inventory\nsolver = pyo.SolverFactory('gurobi')\nresult = solver.solve(model, tee=True)\nprint(result)\n# Print the updated production and inventory levels to assess the impact of higher initial inventory\nprint('Total Holding Cost: $', pyo.value(model.cost))\nprint('Optimal Production Plan:')\nprint(f'Initial Inventory: {pyo.value(model.initial_inventory)} dozens')\nfor t in model.T:\n    print(f'Quarter {t}: Production = {pyo.value(model.production[t])} dozens, Inventory = {pyo.value(model.inventory[t])} dozens')"
+    },
+    {
+        "question": "What happens to the total holding costs and inventory levels if the holding cost for each quarter increases by 5 units?",
+        "answer": "Increasing the holding costs by 5 units for each quarter generally leads to higher overall holding costs as the company will incur greater expenses for storing inventory. However, the production remained same despite of the increase in the holding cost.",
+        "time(sec)": "0.16",
+        "code": "# Increase holding costs by 5 units for each quarter\nfor t in model.T:\n    model.holding_cost[t] = model.holding_cost[t] + 5\n\n# Solve the model again with updated holding costs\nresult = solver.solve(model, tee=True)\nprint(result)\n\n# Print the results\nprint(\"Total Holding Cost: $\", pyo.value(model.cost))\nprint(\"Optimal Production Plan:\")\nprint(f\"Initial Inventory: {pyo.value(model.initial_inventory)} dozens\")\nfor t in model.T:\n    print(f\"Quarter {t}: Production = {pyo.value(model.production[t])} dozens, Inventory = {pyo.value(model.inventory[t])} dozens\")"
+    },
+    {
+        "question": "How would an increase in the minimum end-cycle inventory requirement (from 1600 dozens to 1800 dozens) affect the production and inventory strategy?",
+        "answer": "Since the End Cycle Inventory Constraint has been increased to 1800 dozens, the production for the second quarter increased to 850 dozens leading to increase of holding cost to $ 78000.",
+        "time(sec)": "0.21",
+        "code": "# Update the minimum end-cycle inventory requirement from 1600 to 1800 dozens\ndef updated_end_cycle_inventory(model):\n    return model.inventory[model.T.last()] >= 1800  # Increasing the threshold to 1800 dozens\n\n# Replace the old end-cycle inventory constraint with the new one\nmodel.end_cycle_con.deactivate()  # Deactivate the old constraint first\nmodel.updated_end_cycle_con = pyo.Constraint(rule=updated_end_cycle_inventory, doc='Updated end cycle inventory must be at least 1800 dozens')\n\n# Solve the model again with the updated end-cycle inventory requirement\nupdated_result = solver.solve(model, tee=True)\nprint(updated_result)\n\n# Print the results with the updated end-cycle inventory requirement\nprint(\"Total Holding Cost with updated end-cycle inventory: $\", pyo.value(model.cost))\nprint(\"Optimal Production Plan with updated end-cycle inventory:\")\nprint(f\"Initial Inventory: {pyo.value(model.initial_inventory)} dozens\")\nfor t in model.T:\n    print(f\"Quarter {t}: Production = {pyo.value(model.production[t])} dozens, Inventory = {pyo.value(model.inventory[t])} dozens\")"
+    },
+    {
+        "question": "If the cost associated with the initial inventory holding is increased from 15 to 20 units, how would this change the company's strategy regarding the initial inventory levels?",
+        "answer": "Increasing the initial inventory holding cost from 15 to 20 units would likely lead the increase of the total holding cost to $ 86000. The initial holding cost only affects on the first quarter of the bikini production.",
+        "time(sec)": "5",
+        "code": "# Increase the cost of holding initial inventory from 15 to 20\nmodel.holding_cost_initial = 20\n\n# Solve the model again with the updated holding cost for the initial inventory\nupdated_result = solver.solve(model, tee=True)\nprint(updated_result)\n\n# Print the results with the updated initial inventory holding cost\nprint(\"Total Holding Cost with increased initial inventory cost: $\", pyo.value(model.cost))\nprint(\"Optimal Production Plan with increased initial inventory cost:\")\nprint(f\"Initial Inventory: {pyo.value(model.initial_inventory)} dozens\")\nfor t in model.T:\n    print(f\"Quarter {t}: Production = {pyo.value(model.production[t])} dozens, Inventory = {pyo.value(model.inventory[t])} dozens\")"
+    },
+    {
+        "question": "What impact would decreasing the holding cost per dozen in the inventory from 15 to 10 units in all quarters have on the optimal production plan and total costs?",
+        "answer": "Decreasing the holding cost per dozen from 15 to 10 units for all quarters would likely result in lower total holding costs. The holding cost parameters do not affect the production and inventory levels but on the total holding cost.",
+        "time(sec)": "0.19",
+        "code": "# Decrease the holding cost per dozen in the inventory from 15 to 10 for all quarters\nfor t in model.T:\n    model.holding_cost[t] = 10\n\n# Solve the model again with the decreased holding costs\nupdated_result = solver.solve(model, tee=True)\nprint(updated_result)\n\n# Print the results with the decreased holding costs\nprint(\"Total Holding Cost with decreased holding costs: $\", pyo.value(model.cost))\nprint(\"Optimal Production Plan with decreased holding costs:\")\nprint(f\"Initial Inventory: {pyo.value(model.initial_inventory)} dozens\")\nfor t in model.T:\n    print(f\"Quarter {t}: Production = {pyo.value(model.production[t])} dozens, Inventory = {pyo.value(model.inventory[t])} dozens\")"
+    }
+]
