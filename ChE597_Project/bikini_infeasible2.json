@@ -1,14 +1,14 @@
 [
     {
         "question": "Troubleshoot the infeasibility",
-        "answer": "",
-        "time(sec)": "0.65",
-        "code": ""
+        "answer": "The model infeasibility is primarily due to the total demand across all quarters exceeding the set production capacities. Key steps to resolve this include verifying the accuracy of demand forecasts, considering increases to production capacities where possible, and potentially introducing slack variables to the model to provide additional flexibility. Specifically, adjusting the capacity constraint in Q2 (x16: x7 <= 600) could be critical as it is significantly lower than in other quarters.",
+        "time(sec)": "0.25",
+        "code": "# Create the solver and perform IIS analysis\nimport pyomo.environ as pyo\nsolver = pyo.SolverFactory('gurobi_direct')\nmodel = your_model_setup_function() # Ensure your model is set up here\nresult = solver.solve(model, tee=True)\nif result.solver.termination_condition == pyo.TerminationCondition.infeasible:\n    print(\"Model is infeasible, starting IIS analysis...\")\n    model.write(\"/tmp/model.lp\", io_options={'symbolic_solver_labels': True}) # Write the model to an LP file for IIS analysis\n    solver._solver_model.computeIIS() # Directly compute the IIS using Gurobi\n    solver._solver_model.write(\"/tmp/model.ilp\") # Write the IIS to a file\n    with open(\"/tmp/model.ilp\", 'r') as f: # Read and print the IIS\n        ilp_contents = f.read()\n        print(\"IIS output:\", ilp_contents)\nelse:\n    print(\"Model solved successfully:\", result.solver.status)"
     },
     {
-        "question": "Suppose I have some flexibility for the fixed cost at plant. Will my model become feasible if I can make some small changes to the demand?",
-        "answer": "",
-        "time(sec)": "0.65",
-        "code": ""
+        "question": "Suppose I have some capacity for production at the plant. Will my model become feasible if I can make some small changes to the demand? Try adding the slack variables with bounded values to see how the outcome affects the feasibility and outcome of the bikini manufacturing problem.",
+        "answer": "The use of bounded slack variables has highlighted areas where production capacity adjustments could significantly enhance model feasibility and economic efficiency. Specifically, increasing production capacities in Q1 and Q4 where negative slacks were observed could help meet excess demand, potentially improving customer satisfaction and sales. Conversely, reducing unnecessary capacity in Q2, as indicated by positive slack, could decrease operational costs. These adjustments should be carefully analyzed for economic viability and aligned with strategic business objectives to ensure overall profitability.",
+        "time(sec)": "0.26",
+        "code": "# Add bounded slack variables\nmodel.slack_positive = pyo.Var(model.T, bounds=(0, 300), domain=pyo.NonNegativeReals, doc='Positive slack')\nmodel.slack_negative = pyo.Var(model.T, bounds=(0, 300), domain=pyo.NonNegativeReals, doc='Negative slack')\n\n# Constraints including slack variables\ndef adjusted_inventory_balance(model, t):\n    if t == 1:\n        return model.initial_inventory + model.production[t] - (model.demand[t] + model.slack_positive[t] - model.slack_negative[t]) == model.inventory[t]\n    else:\n        return model.inventory[t-1] + model.production[t] - (model.demand[t] + model.slack_positive[t] - model.slack_negative[t]) == model.inventory[t]\n\nmodel.inv_bal_with_slack = pyo.Constraint(model.T, rule=adjusted_inventory_balance, doc='Adjusted inventory balance with slack variables')\n\n# Deactivate original inventory balance constraint and solve\nmodel.inv_bal.deactivate()  # Assuming inv_bal is the original constraint without slack\nsolver = pyo.SolverFactory('gurobi')\nresult = solver.solve(model, tee=True)\n\n# Print the results\nprint(\"Model status:\", result.solver.status)\nprint(\"Total Holding Cost: $\", pyo.value(model.cost))\nprint(\"Optimal Production Plan:\")\nfor t in model.T:\n    print(f\"Quarter {t}: Production = {pyo.value(model.production[t])} dozens, Inventory = {pyo.value(model.inventory[t])} dozens, Slack+ = {pyo.value(model.slack_positive[t])}, Slack- = {pyo.value(model.slack_negative[t])}\")"
     }
 ]
