@@ -79,33 +79,3 @@ print("Makespan: ", pyo.value(model.makespan))
 print("Start times:")
 for j, m in model.TASKS:
     print(f"Task {j} on Machine {m} starts at {pyo.value(model.start[j, m])}")
-
-# Step 1: Store original data for Job C
-job_c_tasks = {task: Task[task] for task in Task if task[0] == 'C'}
-
-# Step 2: Temporarily remove Job C's tasks from the model
-for task in job_c_tasks:
-    model.TASKS.remove(task)  # Removing from model's TASKS set
-    del model.dur[task]  # Remove duration parameter entries for Job C
-
-# Step 3: Adjust constraints if needed
-# Remove constraints related to Job C in model.preceding and model.disjunctions
-model.preceding.clear()  # Clear and rebuild the preceding task constraints without Job C
-for (j, m) in Task:
-    if j != 'C' and Task[(j, m)]['prec'] and Task[(j, m)]['prec'][0] != 'C':
-        k, n = Task[(j, m)]['prec']
-        model.preceding.add(model.start[k, n] + model.dur[k, n] <= model.start[j, m])
-
-model.disjunctions.clear()  # Clear and rebuild disjunction constraints without Job C
-for (j, m) in model.TASKS:
-    for (k, n) in model.TASKS:
-        if m == n and (j, m) != (k, n):
-            model.disjunctions.add(model.start[j, m] + model.dur[j, m] <= model.start[k, n] + bigM * (1 - model.y[(j, m), (k, n)]))
-            model.disjunctions.add(model.start[k, n] + model.dur[k, n] <= model.start[j, m] + bigM * model.y[(j, m), (k, n)])
-
-# Step 4: Solve the model again
-solver.solve(model)
-print("New makespan after removing Job C:", pyo.value(model.makespan))
-print("Start times without Job C:")
-for j, m in model.TASKS:
-    print(f"Task {j} on Machine {m} starts at {pyo.value(model.start[j, m])}")
