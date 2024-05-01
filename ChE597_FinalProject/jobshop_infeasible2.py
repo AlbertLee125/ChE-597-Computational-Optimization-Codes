@@ -45,8 +45,8 @@ model.dur = pyo.Param(model.TASKS, initialize=lambda model, j, m: Task[(j, m)]['
 
 # Variables
 ub = sum(Task[jm]['dur'] for jm in Task)
-model.makespan = pyo.Var(bounds=(0, ub-10)) # Changed the upper bound to make it infeasible
-model.start = pyo.Var(model.TASKS, bounds=(0, ub-10))
+model.makespan = pyo.Var(bounds=(0, ub)) 
+model.start = pyo.Var(model.TASKS, bounds=(0, ub))
 
 # Binary variables for task ordering
 bigM = ub  # Setting bigM to the upper bound of makespan
