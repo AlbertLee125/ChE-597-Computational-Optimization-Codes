@@ -1,0 +1,56 @@
+[
+    {
+        "question": "What if the processing time for Job A at Stage 1 is increased from 5 to 8? How would this affect the overall makespan and the start times of subsequent tasks?",
+        "answer": "Increasing the processing time for Job A at Stage 1 from 5 to 8 resulted in an increase in the overall makespan from 10.0 to 13.0. This change indicates that Job A's initial stage is critical to the schedule, and any delay in this stage substantially impacts the entire project timeline.",
+        "time(sec)": "0.16",
+        "code": "# Increase the processing time for Job A at Stage 1 from 5 to 8\nmodel.dur['A', 1] = 8\nsolver.solve(model)\nprint(\"New makespan after increasing Job A Stage 1 processing time:\", pyo.value(model.makespan))"
+    },
+    {
+        "question": "What if Job C is completely removed from the schedule? How does this change the makespan?",
+        "answer": "Removing Job C from the schedule led to a reduction in the overall makespan from 10.0 to 8.0. This change indicates that Job C's tasks were not on the critical path and their removal allowed for a more efficient scheduling of the remaining jobs, resulting in a shorter completion time. The start times of the remaining tasks were also adjusted accordingly.",
+        "time(sec)": "0.16",
+        "code": "\n# Step 1: Store original data for Job C\njob_c_tasks = {task: Task[task] for task in Task if task[0] == 'C'}\n\n# Step 2: Temporarily remove Job C's tasks from the model\nfor task in job_c_tasks:\n    model.TASKS.remove(task)\n    del model.dur[task]\n\n# Step 3: Adjust constraints if needed\nmodel.preceding.clear()\nfor (j, m) in Task:\n    if j != 'C' and Task[(j, m)]['prec'] and Task[(j, m)]['prec'][0] != 'C':\n        k, n = Task[(j, m)]['prec']\n        model.preceding.add(model.start[k, n] + model.dur[k, n] <= model.start[j, m])\n\nmodel.disjunctions.clear()\nfor (j, m) in model.TASKS:\n    for (k, n) in model.TASKS:\n        if m == n and (j, m) != (k, n):\n            model.disjunctions.add(model.start[j, m] + model.dur[j, m] <= model.start[k, n] + bigM * (1 - model.y[(j, m), (k, n)]))\n            model.disjunctions.add(model.start[k, n] + model.dur[k, n] <= model.start[j, m] + bigM * model.y[(j, m), (k, n)])\n\n# Step 4: Solve the model again\nsolver.solve(model)\nprint('New makespan after removing Job C:', pyo.value(model.makespan))\nprint('Start times without Job C:')\nfor j, m in model.TASKS:\n    print(f'Task {j} on Machine {m} starts at {pyo.value(model.start[j, m])}')\n"
+    },
+    {
+        "question": "What if Job B requires an additional stage (Stage 4) with a duration of 3? How would this change impact the scheduling?",
+        "answer": "Adding a new Stage 4 to Job B with a duration of 3 did not affect the overall makespan, which remained at 10.0. This result indicates that despite the introduction of an additional stage, Job B's new stage did not overlap or conflict with critical path activities of other jobs, thus maintaining the original makespan.",
+        "time(sec)": "0.25",
+        "code": "# Add a new stage to Job B\nmodel.TASKS.add(('B', 4))\nmodel.dur['B', 4] = 3\nsolver.solve(model)\nprint(\"New makespan after adding a new stage to Job B:\", pyo.value(model.makespan))"
+    },
+    {
+        "question": "What if the processing times for all stages of all jobs are reduced by 10%? How would this affect the makespan?",
+        "answer": "Reducing the processing times for all stages of all jobs by 10% led to a decrease in the overall makespan from 10.0 to 9.0. This improvement shows that even small reductions in processing times across all tasks can significantly enhance the overall efficiency of the job scheduling, leading to a more compact schedule and reduced completion time.",
+        "time(sec)": "0.15",
+        "code": "# Reduce all processing times by 10%\nfor job, machine in model.TASKS:\n    model.dur[job, machine] = model.dur[job, machine] * 0.9\nsolver.solve(model)\nprint(\"New makespan after reducing all processing times by 10%:\", pyo.value(model.makespan))"
+    },
+    {
+        "question": "What if there is a delay of 2 units in the start time of Job A's Stage 3 due to equipment maintenance?",
+        "answer": "Delaying the start time of Job A's Stage 3 by 2 units resulted in an increase in the overall makespan from 10.0 to 12.0. This shows that Job A's Stage 3 is a critical point in the schedule, where delays directly extend the end time of the project, impacting the overall efficiency and timing of the job shop scheduling.",
+        "time(sec)": "0.17",
+        "code": "# Delay Job A's Stage 3 start time by 2 units\nmodel.start['A', 3].setlb(model.start['A', 3].value + 2)\nsolver.solve(model)\nprint(\"New makespan after delaying Job A Stage 3 start time by 2 units:\", pyo.value(model.makespan))"
+    },
+    {
+        "question": "How does the makespan change when the processing times of Job B's stages are increased and decreased by one unit?",
+        "answer": "The makespan remained constant at 10.0 even when the processing times of Job B's stages were increased and decreased by one unit. This indicates that Job B's stages are not on the critical path, and changes to these stages do not impact the overall makespan. Task B on Machine 2 starts at time 0.0 in both scenarios, and its finish time does not extend beyond the makespan determined by other tasks.",
+        "time(sec)": "0.16",
+        "code": "# Modify processing times for Job B's stages and re-solve the model\nincrements = [1, -1]  # Increase and decrease processing time by 1 unit\noriginal_times = {stage: Task[stage]['dur'] for stage in Task if stage[0] == 'B'}\nfor increment in increments:\n    for stage in original_times:\n        model.dur[stage] = original_times[stage] + increment\n    solver.solve(model)\n    print(f\"Processing time for Job B's stages changed by {increment}\")\n    print(\"New makespan:\", pyo.value(model.makespan))\n    # Reset times to original after each test\n    for stage in original_times:\n        model.dur[stage] = original_times[stage]"
+    },
+    {
+        "question": "What impact does increasing the processing time of the last stage of all jobs have on the overall makespan?",
+        "answer": "Increasing the processing time of the last stages of all jobs by one unit resulted in the makespan increasing from 10.0 to 11.0. This change primarily impacted Job A, whose last stage's increased duration directly contributed to the extended makespan, underscoring its critical role in determining the overall scheduling efficiency.",
+        "time(sec)": "0.17",
+        "code": "# Increase processing time of the last stage for all jobs\nfor job in model.JOBS:\n    last_stage = max([stage for stage in model.TASKS if stage[0] == job], key=lambda x: x[1])\n    original_time = Task[last_stage]['dur']\n    model.dur[last_stage] = original_time + 1  # Increase the last stage duration by 1\n\nsolver.solve(model)\nprint(\"Processing time for the last stages increased by 1 unit for all jobs.\")\nprint(\"New makespan:\", pyo.value(model.makespan))\n\nprint(\"Start times:\")\nfor j, m in model.TASKS:\n    print(f\"Task {j} on Machine {m} starts at {pyo.value(model.start[j, m])}\")"
+    },
+    {
+        "question": "How does prioritizing jobs with shorter processing times affect the makespan and the sequence of job scheduling?",
+        "answer": "Prioritizing jobs with shorter processing times significantly altered the schedule and increased the makespan from 10.0 to 19.0. The new scheduling approach caused a shift in start times, particularly for Jobs A and B, which started later in the sequence, indicating a redistribution of priorities that extended the overall project timeline.",
+        "time(sec)": "0.16",
+        "code": "# Adjusting the objective function to prioritize jobs with shorter processing times\ndef custom_objective(model):\n    return sum(model.dur[j, m] for j, m in model.TASKS)\n\nmodel.objective.deactivate()  # Deactivate the old objective\nmodel.new_objective = pyo.Objective(rule=custom_objective, sense=pyo.minimize)  # New objective focusing on shorter jobs\nsolver.solve(model)\n\nprint(\"Objective changed to prioritize shorter jobs.\")\nprint(\"New makespan:\", pyo.value(model.makespan))\nprint(\"Start times:\")\nfor j, m in model.TASKS:\n    print(f\"Task {j} on Machine {m} starts at {pyo.value(model.start[j, m])}\")"
+    },
+    {
+        "question": "What happens when the weight of the makespan in the objective function is increased? Does this lead to a more compact job schedule?",
+        "answer": "Increasing the weight of the makespan in the objective function by 50% did not change the overall makespan, which remained at 10.0. This indicates that the scheduling is already optimized to minimize the makespan under the given constraints and job configurations. The result underscores the robustness of the scheduling against variations in the objective function's emphasis on the makespan.",
+        "time(sec)": "0.19",
+        "code": "# Increase the weight of the makespan in the objective function\noriginal_makespan_expr = model.objective.expr\nmodel.objective.set_value(1.5 * original_makespan_expr)  # Increase weight of makespan by 50%\n\nsolver.solve(model)\n\nprint(\"Weight of makespan in objective function increased by 50%.\")\nprint(\"New makespan:\", pyo.value(model.makespan))\nprint(\"Start times:\")\nfor j, m in model.TASKS:\n    print(f\"Task {j} on Machine {m} starts at {pyo.value(model.start[j, m])}\")"
+    }
+]
