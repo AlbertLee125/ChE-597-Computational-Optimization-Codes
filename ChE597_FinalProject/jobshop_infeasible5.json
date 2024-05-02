@@ -1,0 +1,14 @@
+[
+    {
+        "question": "How do you troubleshoot the infeasibility of the model using Gurobi's IIS feature, and what does the analysis reveal?",
+        "answer": "Using Gurobi's IIS feature, the analysis pinpoints two constraints that are mutually exclusive, leading to model infeasibility. These constraints suggest contradictory requirements for the variables involved, making it impossible to satisfy both simultaneously. Resolving this infeasibility would require adjusting the constraints or reevaluating the model parameters to ensure they accurately reflect the intended logic of the model.",
+        "time(sec)": "0.14",
+        "code": "# Solver\nsolver = pyo.SolverFactory('gurobi')\nresult = solver.solve(model, tee=True)\nif result.solver.termination_condition == pyo.TerminationCondition.infeasible:\n    print('Model is infeasible. Starting IIS analysis...')\n    model.write('/tmp/model.lp', io_options={'symbolic_solver_labels': True})\n    solver = pyo.SolverFactory('gurobi_direct')\n    solver.solve(model, options={'IISMethod': 1}, tee=True)\n    solver._solver_model.computeIIS()\n    solver._solver_model.write('/tmp/model.ilp')\n    with open('/tmp/model.ilp', 'r') as f:\n        iis_contents = f.read()\n        print('IIS output:', iis_contents)"
+    },
+    {
+        "question": "How does iteratively increasing the makespan upper bound lead to a feasible solution in the job shop scheduling model?",
+        "answer":"The modifications made to the scheduling model effectively resolved the infeasibility issues by removing cyclic dependencies between tasks. By updating the precedence constraints, the model was able to find a feasible solution that minimized the makespan to 7.0. The adjustments ensured that all tasks could be scheduled in a logical sequence without overlapping or violating any required precedences. The output shows that each task was allocated a start time that fits within the project's timeline, demonstrating a coherent and executable schedule. This adjustment not only achieved feasibility but also optimized the overall completion time, reflecting a significant improvement in the scheduling process.",
+        "time(sec)": "0.18",
+        "code": "# Clear and reinitialize the model precedences to reflect the updated Task dependencies\nmodel.preceding.clear()\n\n# Redefine preceding constraints with updated Task dependencies\nfor (j, m) in Task:\n    if Task[(j, m)]['prec']:\n        k, n = Task[(j, m)]['prec']\n        model.preceding.add(model.start[k, n] + model.dur[k, n] <= model.start[j, m])\n\n# Solve the model again after breaking all potential cycles\nsolver = pyo.SolverFactory('gurobi')\nresult = solver.solve(model, tee=True)\n\nprint(\"Makespan:\", pyo.value(model.makespan))\nprint(\"Start Times:\")\nfor j, m in model.TASKS:\n    print(f\"Task {j}{m}: {pyo.value(model.start[j, m])}\")"
+    }
+]
